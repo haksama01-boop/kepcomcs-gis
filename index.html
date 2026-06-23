@@ -103,6 +103,10 @@
     <div class="viewerWrap" id="viewerWrap">
       <div class="mapWrap"><div id="map"></div><canvas id="markerCanvas"></canvas><canvas id="memoCanvas"></canvas></div>
       <div class="roadviewWrap" id="roadviewWrap">
+        <div id="customerInfoPanel" class="customer-side-panel hidden">
+          <button class="customer-panel-close" type="button" onclick="closeInfo()">×</button>
+          <div id="customerInfoContent"></div>
+        </div>
         <div id="roadview"></div>
         <div class="roadviewTitle" id="roadviewTitle">로드뷰</div>
         <div id="roadviewEmpty">마커 또는 왼쪽 목록을 클릭하면<br>해당 위치의 로드뷰가 표시됩니다.</div>

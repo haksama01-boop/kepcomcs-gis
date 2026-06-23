@@ -411,7 +411,24 @@ function hexToRgba(hex, alpha) {
 function clearBunAreaPolygons() {}
 function drawBunAreas(sourceRows) {}
 function clearSummaryOverlays(){ summaryOverlays.forEach(o => o.setMap(null)); summaryOverlays = []; }
-function closeInfo(){ if (openedOverlay) openedOverlay.setMap(null); openedOverlay = null; openedGroupKey = null; }
+function closeInfo(){
+  if (openedOverlay) openedOverlay.setMap(null);
+  openedOverlay = null;
+  openedGroupKey = null;
+  const panel = $('customerInfoPanel');
+  const content = $('customerInfoContent');
+  if (panel) panel.classList.add('hidden');
+  if (content) content.innerHTML = '';
+}
+function showCustomerInfoPanel(html) {
+  const panel = $('customerInfoPanel');
+  const content = $('customerInfoContent');
+  if (!panel || !content) return false;
+  if (!roadviewVisible) setRoadviewPanelVisible(true);
+  content.innerHTML = html;
+  panel.classList.remove('hidden');
+  return true;
+}
 function requestDraw(){ clearTimeout(drawTimer); drawTimer = setTimeout(drawCanvas, 40); }
 function resizeCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
@@ -770,7 +787,6 @@ function showRoadviewAt(lat, lng, row=null) {
 
 function makeCustomerCardHtml(row, countText='') {
   return `<div class="customer-info-card">
-    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
     <b class="contract-no">${escapeHtml(row.contractNo || countText || '-')}</b>
     <div class="info-row"><span class="info-label">검침원</span><span class="info-value">${escapeHtml(row.reader || '-')}</span></div>
     <div class="info-row"><span class="info-label">검침일</span><span class="info-value">${escapeHtml(row.meterDate || '-')}</span></div>
@@ -794,7 +810,6 @@ function makeInfoContent(group) {
   ).join('');
   const extra = group.rows.length > 300 ? `<div class="group-row">외 ${group.rows.length - 300}건 생략</div>` : '';
   return `<div class="customer-info-card" style="max-width:430px;">
-    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
     <b class="contract-no">동일 위치 ${group.rows.length}건</b>
     <div class="address">${escapeHtml(first.address || '')}</div>
     <div class="group-list">${rowsHtml}${extra}</div>
@@ -814,14 +829,7 @@ function onMapClick(mouseEvent) {
   if (!best) return closeInfo();
   if (openedGroupKey === best.key) return closeInfo();
   closeInfo();
-  openedOverlay = new kakao.maps.CustomOverlay({
-    position: new kakao.maps.LatLng(best.lat, best.lng),
-    content: makeInfoContent(best),
-    yAnchor: 1.15,
-    xAnchor: 0.5,
-    zIndex: 999999
-  });
-  openedOverlay.setMap(map);
+  showCustomerInfoPanel(makeInfoContent(best));
   openedGroupKey = best.key;
   showRoadviewAt(best.lat, best.lng, best.rows && best.rows[0]);
 }
@@ -830,7 +838,12 @@ function renderList(sourceRows = null) {
   $('resultList').innerHTML = list.map(r => `<div class="item" data-id="${r.id}"><span class="badge">${escapeHtml(r.reader||'-')}</span><span class="badge">${escapeHtml(r.meterDate||'-')}</span><span class="badge">${escapeHtml(r.bun||'-')}</span><br><b>${escapeHtml(r.contractNo)}</b><br>${escapeHtml(r.address)}<br><small>${escapeHtml(r.type||'-')} / ${escapeHtml(r.power||'-')} / ${escapeHtml(r.method||'-')} · 상태: ${r.status}</small></div>`).join('');
   document.querySelectorAll('.item').forEach(el => el.addEventListener('click', () => {
     const r = rows.find(x => x.id === +el.dataset.id); if (!r || !r.lat || !r.lng || !map) return;
-    map.setCenter(new kakao.maps.LatLng(r.lat, r.lng)); map.setLevel(3); showRoadviewAt(r.lat, r.lng, r); requestDraw();
+    map.setCenter(new kakao.maps.LatLng(r.lat, r.lng));
+    map.setLevel(3);
+    showCustomerInfoPanel(makeCustomerCardHtml(r));
+    openedGroupKey = makeGroupKey(r);
+    showRoadviewAt(r.lat, r.lng, r);
+    requestDraw();
   }));
 }
 
