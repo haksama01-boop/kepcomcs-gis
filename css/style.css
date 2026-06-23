@@ -189,3 +189,22 @@
 .personal-upload > b {
   color: #374151;
 }
+
+
+/* 관리자 로그인 방식 */
+.admin-login-box {
+  margin-top: 10px;
+}
+.admin-login-form {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
+  padding: 10px;
+  margin-top: 8px;
+}
+.hidden {
+  display: none !important;
+}
+.admin-upload {
+  transition: all .2s ease;
+}

@@ -28,6 +28,9 @@ let memoMode = 'off';
 let memoItems = [];
 let currentMemoPath = null;
 let memoInitialized = false;
+let adminLoggedIn = false;
+let adminPasswordCache = '';
+
 
 const $ = id => document.getElementById(id);
 function setMsg(text, isError=false) { $('message').innerHTML = text ? `<div class="${isError ? 'error' : 'notice'}">${text}</div>` : ''; }
@@ -150,6 +153,77 @@ async function loadRowsIntoMap(newRows, sourceLabel='자료', updatedAt='') {
   setMsg(`${sourceLabel} ${rows.length.toLocaleString()}건 읽음. 좌표 인식 ${coordCount.toLocaleString()}건. 좌표가 있으면 바로 표시됩니다.`);
 }
 
+
+function setAdminMode(enabled) {
+  adminLoggedIn = !!enabled;
+  const loginBox = $('adminLoginBox');
+  const form = $('adminLoginForm');
+  const uploadBox = $('adminUploadBox');
+  const toggleBtn = $('adminLoginToggleBtn');
+
+  if (uploadBox) uploadBox.classList.toggle('hidden', !adminLoggedIn);
+  if (form) form.classList.add('hidden');
+  if (toggleBtn) toggleBtn.textContent = adminLoggedIn ? '관리자 로그인됨' : '관리자 로그인';
+  if (loginBox) loginBox.classList.toggle('hidden', adminLoggedIn);
+}
+
+async function verifyAdminPassword(password) {
+  const res = await fetch('/api/admin-check', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-admin-password': password
+    },
+    body: JSON.stringify({ ok: true })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '관리자 인증에 실패했습니다.');
+  return true;
+}
+
+function initAdminLoginUI() {
+  const toggle = $('adminLoginToggleBtn');
+  const form = $('adminLoginForm');
+  const login = $('adminLoginBtn');
+  const logout = $('adminLogoutBtn');
+
+  if (toggle && form) {
+    toggle.addEventListener('click', () => {
+      form.classList.toggle('hidden');
+      const input = $('adminPassword');
+      if (input && !form.classList.contains('hidden')) input.focus();
+    });
+  }
+
+  if (login) {
+    login.addEventListener('click', async () => {
+      const password = normalize($('adminPassword').value);
+      if (!password) return setMsg('관리자 비밀번호를 입력해 주세요.', true);
+
+      try {
+        setMsg('관리자 확인 중...');
+        await verifyAdminPassword(password);
+        adminPasswordCache = password;
+        setAdminMode(true);
+        setMsg('관리자 로그인 완료. 공용자료 변경 메뉴가 활성화되었습니다.');
+      } catch (err) {
+        adminPasswordCache = '';
+        setAdminMode(false);
+        setMsg((err && err.message) ? err.message : String(err), true);
+      }
+    });
+  }
+
+  if (logout) {
+    logout.addEventListener('click', () => {
+      adminPasswordCache = '';
+      setAdminMode(false);
+      setMsg('관리자 로그아웃 완료.');
+    });
+  }
+}
+
+
 // 2번 개인자료 업로드: 업로드한 사람의 브라우저에서만 적용
 $('excelFile').addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -167,9 +241,9 @@ $('excelFile').addEventListener('change', async e => {
 // 1번 공용자료 업로드: Cloudflare D1 데이터베이스에 저장되어 모든 접속자가 볼 수 있음
 $('sharedUploadBtn').addEventListener('click', async () => {
   const file = $('sharedExcelFile').files[0];
-  const password = normalize($('adminPassword').value);
+  const password = adminPasswordCache;
   if (!file) return setMsg('공용자료로 올릴 엑셀 파일을 선택해 주세요.', true);
-  if (!password) return setMsg('관리자 비밀번호를 입력해 주세요.', true);
+  if (!adminLoggedIn || !password) return setMsg('관리자 로그인이 필요합니다.', true);
 
   try {
     setMsg('공용자료 엑셀 읽는 중...');
@@ -226,8 +300,10 @@ async function loadSharedData(silent=false) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 접속 시 공용자료 자동 확인. D1 설정 전이면 조용히 실패 처리됩니다.
-  setTimeout(() => loadSharedData(true), 500);
+  initAdminLoginUI();
+  setAdminMode(false);
+  // 접속 시 공용자료 자동 확인. 공용자료 보기가 기본 실행됩니다.
+  setTimeout(() => loadSharedData(false), 500);
 });
 
 

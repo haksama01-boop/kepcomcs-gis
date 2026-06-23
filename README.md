@@ -71,3 +71,18 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
 - `js/app.js`
 - `functions/api/shared-data.js`
 - `README.md`
+
+
+## v3.1 관리자 로그인 방식
+
+- 사이트 접속 시 공용자료 보기가 기본 실행됩니다.
+- 일반 사용자는 개인자료 업로드만 사용할 수 있습니다.
+- `관리자 로그인` 버튼을 눌러 비밀번호 인증에 성공하면 `공용자료 변경` 메뉴가 표시됩니다.
+- 공용자료 변경 업로드는 Cloudflare D1 데이터베이스에 저장되며 모든 접속자에게 공유됩니다.
+
+필요한 Cloudflare 설정:
+
+- Environment Variable
+  - `ADMIN_PASSWORD`
+- D1 Binding
+  - Variable name: `GIS_DB`
