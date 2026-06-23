@@ -2,28 +2,35 @@ const KEY = 'shared-data-v1';
 
 export async function onRequestGet(context) {
   const { env } = context;
-  if (!env.GIS_KV) {
-    return json({ error: 'Cloudflare KV 바인딩 GIS_KV가 설정되지 않았습니다.' }, 500);
+  if (!env.GIS_DB) {
+    return json({ error: 'Cloudflare D1 바인딩 GIS_DB가 설정되지 않았습니다.' }, 500);
   }
 
-  const value = await env.GIS_KV.get(KEY);
-  if (!value) {
+  await ensureTable(env);
+  const row = await env.GIS_DB.prepare(
+    'SELECT value, updated_at FROM app_data WHERE key = ?'
+  ).bind(KEY).first();
+
+  if (!row || !row.value) {
     return json({ rows: [], updatedAt: null });
   }
 
-  return new Response(value, {
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store'
-    }
-  });
+  try {
+    const parsed = JSON.parse(row.value);
+    return json({
+      rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+      updatedAt: parsed.updatedAt || row.updated_at || null
+    });
+  } catch {
+    return json({ error: '저장된 공용자료 형식이 올바르지 않습니다.' }, 500);
+  }
 }
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.GIS_KV) {
-    return json({ error: 'Cloudflare KV 바인딩 GIS_KV가 설정되지 않았습니다.' }, 500);
+  if (!env.GIS_DB) {
+    return json({ error: 'Cloudflare D1 바인딩 GIS_DB가 설정되지 않았습니다.' }, 500);
   }
   if (!env.ADMIN_PASSWORD) {
     return json({ error: '관리자 비밀번호 환경변수 ADMIN_PASSWORD가 설정되지 않았습니다.' }, 500);
@@ -45,18 +52,49 @@ export async function onRequestPost(context) {
     return json({ error: 'rows 데이터가 없습니다.' }, 400);
   }
 
-  const payload = JSON.stringify({
-    updatedAt: body.updatedAt || new Date().toISOString(),
+  await ensureTable(env);
+
+  const updatedAt = body.updatedAt || new Date().toISOString();
+  const value = JSON.stringify({
+    updatedAt,
     rows: body.rows
   });
 
-  await env.GIS_KV.put(KEY, payload);
+  await env.GIS_DB.prepare(
+    `INSERT INTO app_data (key, value, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+  ).bind(KEY, value, updatedAt).run();
+
+  await env.GIS_DB.prepare(
+    `INSERT INTO upload_logs (kind, count, updated_at)
+     VALUES (?, ?, ?)`
+  ).bind('shared', body.rows.length, updatedAt).run();
 
   return json({
     ok: true,
-    updatedAt: body.updatedAt || new Date().toISOString(),
+    updatedAt,
     count: body.rows.length
   });
+}
+
+async function ensureTable(env) {
+  await env.GIS_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS app_data (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT
+    )`
+  ).run();
+
+  await env.GIS_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS upload_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT,
+      count INTEGER,
+      updated_at TEXT
+    )`
+  ).run();
 }
 
 function json(data, status = 200) {

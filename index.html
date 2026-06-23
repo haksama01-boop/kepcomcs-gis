@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>KEPCOMCS-GIS | 검침업무 GIS 분석시스템</title>
+  <title>KEPCOMCS-GIS v3.0 | 검침업무 GIS 분석시스템</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -21,17 +21,23 @@
     <input id="appKey" placeholder="예: 0123456789abcdef..." />
     <button id="loadMapBtn">지도 불러오기</button>
 
-    <label>1번 공용자료 업로드</label>
+    <label>자료 선택 및 업로드</label>
+    <div class="data-status-box">
+      <div><b>현재 자료</b> : <span id="currentDataMode">자료 없음</span></div>
+      <div><b>공용자료 등록일</b> : <span id="sharedUpdatedAt">-</span></div>
+      <button class="secondary" id="loadSharedDataBtn" type="button">공용자료 다시 불러오기</button>
+    </div>
+
     <div class="upload-box admin-upload">
+      <b>1번 공용자료 업로드</b>
       <div class="hint">관리자 전용입니다. 업로드하면 모든 접속자가 같은 자료를 볼 수 있습니다.</div>
       <input type="password" id="adminPassword" placeholder="관리자 비밀번호" />
       <input type="file" id="sharedExcelFile" accept=".xlsx,.xls,.csv" />
-      <button id="sharedUploadBtn" type="button">1번 공용자료 업로드</button>
-      <button class="secondary" id="loadSharedDataBtn" type="button">공용자료 불러오기</button>
+      <button id="sharedUploadBtn" type="button">공용자료 업로드</button>
     </div>
 
-    <label>2번 개인자료 업로드</label>
     <div class="upload-box personal-upload">
+      <b>2번 개인자료 업로드</b>
       <div class="hint">개인 전용입니다. 이 자료는 업로드한 사람의 화면에서만 보입니다.</div>
       <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" />
     </div>

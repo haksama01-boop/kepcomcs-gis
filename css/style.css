@@ -156,20 +156,36 @@
 }
 
 
+/* v3.0 자료 업로드 영역 */
+.data-status-box {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 14px;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  margin-top: 6px;
+}
 .upload-box {
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 10px;
   background: #f9fafb;
-  margin-top: 6px;
+  margin-top: 10px;
 }
 .upload-box input {
   margin-top: 8px;
 }
 .admin-upload {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.admin-upload > b {
+  color: #9a3412;
 }
 .personal-upload {
   background: #f9fafb;
+}
+.personal-upload > b {
+  color: #374151;
 }

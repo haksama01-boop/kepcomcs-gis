@@ -36,24 +36,38 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
 
 조학래
 
+## KEPCOMCS-GIS v3.0
 
-## 1번 공용자료 업로드 설정
+### 자료 업로드 방식
 
-1번 공용자료 업로드는 Cloudflare Pages Functions + KV 저장소를 사용합니다.
+- 1번 공용자료 업로드
+  - 관리자 비밀번호 필요
+  - Cloudflare D1 데이터베이스에 저장
+  - 모든 접속자가 같은 공용자료 확인 가능
+  - 사이트 접속 시 자동으로 공용자료를 확인
 
-### Cloudflare 설정
+- 2번 개인자료 업로드
+  - 업로드한 사람의 브라우저에서만 적용
+  - 다른 사용자 화면에는 영향 없음
 
-1. Cloudflare 대시보드 → Workers & Pages → KV 생성
-2. KV 이름 예시: `KEPCOMCS_GIS_KV`
-3. Pages 프로젝트 → Settings → Functions → KV namespace bindings
-4. Binding name: `GIS_KV`
-5. 생성한 KV namespace 선택
-6. Pages 프로젝트 → Settings → Environment variables
-7. Variable name: `ADMIN_PASSWORD`
-8. 원하는 관리자 비밀번호 입력
-9. 다시 배포
+## Cloudflare D1 설정
 
-### 사용 방식
+1. Cloudflare 대시보드 → Storage and Databases → D1 SQL Database
+2. 데이터베이스 생성
+   - 이름 예시: `kepcomcs_gis_db`
+3. Workers & Pages → `kepcomcs-gis` 프로젝트 → Settings
+4. Functions → D1 database bindings 추가
+   - Variable name: `GIS_DB`
+   - D1 database: 방금 생성한 DB 선택
+5. Settings → Environment variables 추가
+   - Variable name: `ADMIN_PASSWORD`
+   - Value: 관리자 비밀번호
+6. GitHub에 파일 업로드 후 Cloudflare 자동 배포 확인
 
-- 1번 공용자료 업로드: 관리자 비밀번호 필요, 모든 접속자가 공유
-- 2번 개인자료 업로드: 각자 브라우저에서만 표시, 서로 영향 없음
+## 필요한 파일
+
+- `index.html`
+- `css/style.css`
+- `js/app.js`
+- `functions/api/shared-data.js`
+- `README.md`
