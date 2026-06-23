@@ -263,7 +263,7 @@ $('sharedUploadBtn').addEventListener('click', async () => {
     });
 
     const result = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(result.error || '공용자료 저장에 실패했습니다.');
+    if (!res.ok) throw new Error((result.error || '공용자료 저장에 실패했습니다.') + (result.detail ? '\n상세: ' + result.detail : ''));
 
     const when = result.updatedAt ? new Date(result.updatedAt).toLocaleString() : new Date().toLocaleString();
     await loadRowsIntoMap(parsedRows, '공용자료', when);

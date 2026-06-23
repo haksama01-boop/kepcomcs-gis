@@ -86,3 +86,10 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
   - `ADMIN_PASSWORD`
 - D1 Binding
   - Variable name: `GIS_DB`
+
+
+## v3.2 수정 사항
+
+- D1 공용자료 저장 POST 오류 대응
+- UPSERT 대신 DELETE 후 INSERT 방식으로 변경
+- 서버 오류 발생 시 상세 메시지 반환
