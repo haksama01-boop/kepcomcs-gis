@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KEPCOMCS-GIS | 검침업무 GIS 분석시스템</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <h1 style="margin-bottom:4px;color:#111827;">경남지사 지도 프로그램</h1>
+<div style="display:inline-block;padding:6px 12px;margin-bottom:12px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#1e40af);color:white;font-size:15px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.15);">
+🏆 만든이 조학래
+</div>
+    <div class="desc">5만 건 이상에서도 빠르게 볼 수 있도록 <b>Canvas 최적화 방식</b>으로 마커를 표시합니다.</div>
+    <div class="notice">좌표가 있으면 주소 변환 없이 바로 표시합니다.<br>엑셀 좌표는 <b>경도=128.x / 위도=35.x</b> 형식이어야 합니다.</div>
+
+    <label for="appKey">카카오 JavaScript 키</label>
+    <input id="appKey" placeholder="예: 0123456789abcdef..." />
+    <button id="loadMapBtn">지도 불러오기</button>
+
+    <label for="excelFile">엑셀 파일 업로드</label>
+    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" />
+    <button id="geocodeBtn" disabled>좌표 읽기 및 지도 표시</button>
+    <button class="secondary" id="fitBtn" disabled>전체 마커 보기</button>
+    <button class="secondary" id="osmReportCaptureBtn" type="button">출력용 배경지도 전체 PNG 저장</button>
+    <button class="secondary" id="toggleRoadviewBtn" type="button">로드뷰 자동표시 끄기</button>
+
+    <label for="markerSizeRange">마커 크기 조절</label>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="range" id="markerSizeRange" min="10" max="200" value="100" step="5" style="flex:1;" />
+      <span id="markerSizeValue" style="width:46px;text-align:right;font-size:13px;color:#374151;">100%</span>
+    </div>
+
+
+    <label>지도 메모 그리기</label>
+    <button class="secondary" id="toggleMemoDrawBtn" type="button">메모 그리기 켜기</button>
+    <button class="secondary" id="memoTextBtn" type="button">텍스트 메모 추가</button>
+    <button class="secondary" id="memoEraseBtn" type="button">메모 지우개 켜기</button>
+    <button class="secondary" id="memoUndoBtn" type="button">메모 되돌리기</button>
+    <button class="secondary" id="memoClearBtn" type="button">메모 전체 삭제</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+      <div>
+        <label for="memoColor" style="margin-top:0;">색상</label>
+        <input type="color" id="memoColor" value="#dc2626" />
+      </div>
+      <div>
+        <label for="memoWidth" style="margin-top:0;">굵기</label>
+        <input type="number" id="memoWidth" min="1" max="30" value="4" />
+      </div>
+    </div>
+    <div class="hint">메모는 지도 좌표에 저장되어 확대·축소·이동 시 같이 따라갑니다.</div>
+
+    <label for="colorModeSelect">마커 표시 기준</label>
+    <select id="colorModeSelect">
+      <option value="reader">검침원 색상 고정</option>
+      <option value="bun">분구 외곽영역 참고</option>
+      <option value="date">검침일 참고</option>
+    </select>
+    <div class="hint">검침원은 1~30번 고정 패턴으로 표시되고, 분구는 검침원+검침일별 A,B,C...로 표시됩니다.</div>
+        <div class="hint"><b>최종 표시 기준</b> : 검침원=30명 고정 패턴, 분구=검침원+검침일별 알파벳(A,B,C...)</div>
+    <div id="readerColorLegend" class="hint"></div>
+    <button class="secondary" id="toggleSummaryBtn" type="button">검침원/분구/매수 표시창 끄기</button>
+    <div class="hint">마커 표시 기준이 <b>분구별</b>이고 표시가 켜져 있으면 현재 필터 결과의 분구 외곽 영역을 표시합니다. 분구 필터 선택 시 선택된 분구만 표시됩니다.</div>
+
+    <div class="stat">
+      <div class="card"><b id="readerCount">0</b><span>검침원</span></div>
+      <div class="card"><b id="bunCount">0</b><span>분구</span></div>
+      <div class="card"><b id="shownCount">0</b><span>계약번호</span></div>
+    </div>
+
+    <label for="readerFilter">검침원 필터</label>
+    <select id="readerFilter" multiple></select>
+    <div class="hint">항목 클릭 시 선택/해제됩니다. 선택이 없으면 전체입니다.</div>
+
+    <label for="dateFilter">검침일 필터</label>
+    <select id="dateFilter" multiple></select>
+    <div class="hint">검침일을 선택하면 해당 숫자로 시작하는 분구만 아래에 표시됩니다. 예: 15 → 15xxx</div>
+
+    <label for="bunFilter">분구 필터</label>
+    <select id="bunFilter" multiple></select>
+
+    <label for="typeFilter">계약종별 필터</label>
+    <select id="typeFilter" multiple></select>
+
+    <label for="powerFilter">계약전력 필터</label>
+    <select id="powerFilter" multiple></select>
+
+    <label for="methodFilter">계약검침방법 필터</label>
+    <select id="methodFilter" multiple></select>
+
+    <button class="secondary" id="clearFiltersBtn" type="button">필터 전체 해제</button>
+
+    <label for="searchInput">검색</label>
+    <input id="searchInput" placeholder="계약번호, 주소, 검침원, 검침일, 분구 검색" />
+
+    <div id="message"></div>
+    <div class="list" id="resultList"></div>
+  </aside>
+  <main>
+    <div class="viewerWrap" id="viewerWrap">
+      <div class="mapWrap"><div id="map"></div><canvas id="markerCanvas"></canvas><canvas id="memoCanvas"></canvas></div>
+      <div class="roadviewWrap" id="roadviewWrap">
+        <div id="roadview"></div>
+        <div class="roadviewTitle" id="roadviewTitle">로드뷰</div>
+        <div id="roadviewEmpty">마커 또는 왼쪽 목록을 클릭하면<br>해당 위치의 로드뷰가 표시됩니다.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
