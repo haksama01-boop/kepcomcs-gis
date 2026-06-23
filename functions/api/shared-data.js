@@ -1,4 +1,5 @@
 const KEY = 'shared-data-v1';
+const CHUNK_SIZE = 250;
 
 export async function onRequestGet(context) {
   const { env } = context;
@@ -10,19 +11,35 @@ export async function onRequestGet(context) {
 
     await ensureTable(env);
 
-    const row = await env.GIS_DB
-      .prepare('SELECT value, updated_at FROM app_data WHERE key = ?')
+    const meta = await env.GIS_DB
+      .prepare('SELECT updated_at, row_count, chunk_count FROM shared_meta WHERE key = ?')
       .bind(KEY)
       .first();
 
-    if (!row || !row.value) {
+    if (!meta) {
       return json({ rows: [], updatedAt: null });
     }
 
-    const parsed = JSON.parse(row.value);
+    const chunks = await env.GIS_DB
+      .prepare('SELECT chunk_index, value FROM shared_chunks WHERE key = ? ORDER BY chunk_index ASC')
+      .bind(KEY)
+      .all();
+
+    const rows = [];
+    for (const item of (chunks.results || [])) {
+      try {
+        const part = JSON.parse(item.value || '[]');
+        if (Array.isArray(part)) rows.push(...part);
+      } catch {
+        return json({ error: `공용자료 조각 ${item.chunk_index}번을 읽는 중 오류가 발생했습니다.` }, 500);
+      }
+    }
+
     return json({
-      rows: Array.isArray(parsed.rows) ? parsed.rows : [],
-      updatedAt: parsed.updatedAt || row.updated_at || null
+      rows,
+      updatedAt: meta.updated_at || null,
+      rowCount: meta.row_count || rows.length,
+      chunkCount: meta.chunk_count || (chunks.results || []).length
     });
   } catch (err) {
     return json({
@@ -61,33 +78,44 @@ export async function onRequestPost(context) {
     }
 
     const updatedAt = body.updatedAt || new Date().toISOString();
-    const payload = JSON.stringify({
-      updatedAt,
-      rows: body.rows
-    });
+    const rows = body.rows;
+    const chunkCount = Math.ceil(rows.length / CHUNK_SIZE);
 
     await ensureTable(env);
 
-    // D1 호환성을 높이기 위해 UPSERT 대신 DELETE 후 INSERT 방식 사용
+    // 기존 공용자료 삭제
+    await env.GIS_DB.prepare('DELETE FROM shared_chunks WHERE key = ?').bind(KEY).run();
+    await env.GIS_DB.prepare('DELETE FROM shared_meta WHERE key = ?').bind(KEY).run();
+
+    // 새 공용자료 메타 저장
     await env.GIS_DB
-      .prepare('DELETE FROM app_data WHERE key = ?')
-      .bind(KEY)
+      .prepare('INSERT INTO shared_meta (key, updated_at, row_count, chunk_count) VALUES (?, ?, ?, ?)')
+      .bind(KEY, updatedAt, rows.length, chunkCount)
       .run();
 
-    await env.GIS_DB
-      .prepare('INSERT INTO app_data (key, value, updated_at) VALUES (?, ?, ?)')
-      .bind(KEY, payload, updatedAt)
-      .run();
+    // 자료를 여러 조각으로 나누어 저장
+    for (let i = 0; i < chunkCount; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = start + CHUNK_SIZE;
+      const part = rows.slice(start, end);
+      const value = JSON.stringify(part);
+
+      await env.GIS_DB
+        .prepare('INSERT INTO shared_chunks (key, chunk_index, value) VALUES (?, ?, ?)')
+        .bind(KEY, i, value)
+        .run();
+    }
 
     await env.GIS_DB
-      .prepare('INSERT INTO upload_logs (kind, count, updated_at) VALUES (?, ?, ?)')
-      .bind('shared', body.rows.length, updatedAt)
+      .prepare('INSERT INTO upload_logs (kind, count, chunk_count, updated_at) VALUES (?, ?, ?, ?)')
+      .bind('shared', rows.length, chunkCount, updatedAt)
       .run();
 
     return json({
       ok: true,
       updatedAt,
-      count: body.rows.length
+      count: rows.length,
+      chunkCount
     });
   } catch (err) {
     return json({
@@ -99,10 +127,20 @@ export async function onRequestPost(context) {
 
 async function ensureTable(env) {
   await env.GIS_DB
-    .prepare(`CREATE TABLE IF NOT EXISTS app_data (
+    .prepare(`CREATE TABLE IF NOT EXISTS shared_meta (
       key TEXT PRIMARY KEY,
+      updated_at TEXT,
+      row_count INTEGER DEFAULT 0,
+      chunk_count INTEGER DEFAULT 0
+    )`)
+    .run();
+
+  await env.GIS_DB
+    .prepare(`CREATE TABLE IF NOT EXISTS shared_chunks (
+      key TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
       value TEXT NOT NULL,
-      updated_at TEXT
+      PRIMARY KEY (key, chunk_index)
     )`)
     .run();
 
@@ -111,6 +149,16 @@ async function ensureTable(env) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       kind TEXT,
       count INTEGER,
+      chunk_count INTEGER DEFAULT 0,
+      updated_at TEXT
+    )`)
+    .run();
+
+  // v3.2 이전 테이블이 있어도 문제 없도록 유지
+  await env.GIS_DB
+    .prepare(`CREATE TABLE IF NOT EXISTS app_data (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
       updated_at TEXT
     )`)
     .run();

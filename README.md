@@ -93,3 +93,11 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
 - D1 공용자료 저장 POST 오류 대응
 - UPSERT 대신 DELETE 후 INSERT 방식으로 변경
 - 서버 오류 발생 시 상세 메시지 반환
+
+
+## v3.3 수정 사항
+
+- D1 `SQLITE_TOOBIG` 오류 해결
+- 공용자료를 250행 단위로 나누어 저장
+- 대용량 엑셀 공용자료 저장 안정화
+- 기존 D1 설정 `GIS_DB`, `ADMIN_PASSWORD` 그대로 사용

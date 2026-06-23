@@ -249,7 +249,7 @@ $('sharedUploadBtn').addEventListener('click', async () => {
     setMsg('공용자료 엑셀 읽는 중...');
     const parsedRows = await parseExcelFileToRows(file);
 
-    setMsg(`공용자료 서버 저장 중... ${parsedRows.length.toLocaleString()}건`);
+    setMsg(`공용자료 서버 저장 중... ${parsedRows.length.toLocaleString()}건. 대용량 자료는 여러 조각으로 나누어 저장됩니다.`);
     const res = await fetch('/api/shared-data', {
       method: 'POST',
       headers: {
@@ -267,7 +267,7 @@ $('sharedUploadBtn').addEventListener('click', async () => {
 
     const when = result.updatedAt ? new Date(result.updatedAt).toLocaleString() : new Date().toLocaleString();
     await loadRowsIntoMap(parsedRows, '공용자료', when);
-    setMsg(`공용자료 업로드 완료. 모든 접속자가 최신 공용자료를 볼 수 있습니다. ${parsedRows.length.toLocaleString()}건`);
+    setMsg(`공용자료 업로드 완료. 모든 접속자가 최신 공용자료를 볼 수 있습니다. ${parsedRows.length.toLocaleString()}건${result.chunkCount ? ' · 저장조각 ' + result.chunkCount + '개' : ''}`);
   } catch (err) {
     setMsg((err && err.message) ? err.message : String(err), true);
   }
