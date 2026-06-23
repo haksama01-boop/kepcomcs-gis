@@ -415,20 +415,61 @@ function closeInfo(){
   if (openedOverlay) openedOverlay.setMap(null);
   openedOverlay = null;
   openedGroupKey = null;
-  const panel = $('customerInfoPanel');
-  const content = $('customerInfoContent');
-  if (panel) panel.classList.add('hidden');
-  if (content) content.innerHTML = '';
+  const panel = $('floatingInfoPanel');
+  if (panel) {
+    panel.classList.add('hidden');
+    panel.innerHTML = '';
+    panel.dataset.groupKey = '';
+  }
 }
-function showCustomerInfoPanel(html) {
-  const panel = $('customerInfoPanel');
-  const content = $('customerInfoContent');
-  if (!panel || !content) return false;
-  if (!roadviewVisible) setRoadviewPanelVisible(true);
-  content.innerHTML = html;
+
+function clampFloatingInfoPanel(x, y) {
+  const panel = $('floatingInfoPanel');
+  const wrap = panel ? panel.closest('.mapWrap') : null;
+  if (!panel || !wrap) return { x, y };
+  const wrapRect = wrap.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const margin = 12;
+
+  let cx = x;
+  let cy = y;
+
+  const halfW = Math.min(panelRect.width || 300, wrapRect.width - margin * 2) / 2;
+  if (cx - halfW < margin) cx = margin + halfW;
+  if (cx + halfW > wrapRect.width - margin) cx = wrapRect.width - margin - halfW;
+
+  const panelH = panelRect.height || 180;
+  if (cy - panelH - 24 < margin) {
+    // 마커 위쪽 공간이 부족하면 마커 아래쪽에 표시
+    panel.style.transform = 'translate(-50%, 18px)';
+    panel.classList.add('below-marker');
+  } else {
+    panel.style.transform = 'translate(-50%, calc(-100% - 18px))';
+    panel.classList.remove('below-marker');
+  }
+
+  return { x: cx, y: cy };
+}
+function positionFloatingInfoPanelByGroup(group) {
+  const panel = $('floatingInfoPanel');
+  if (!panel || !map || !group) return;
+  const projection = map.getProjection();
+  const p = projection.containerPointFromCoords(new kakao.maps.LatLng(group.lat, group.lng));
+  const pos = clampFloatingInfoPanel(p.x, p.y);
+  panel.style.left = pos.x + 'px';
+  panel.style.top = pos.y + 'px';
+}
+function showFloatingInfoPanel(group) {
+  const panel = $('floatingInfoPanel');
+  if (!panel || !group) return false;
+  panel.innerHTML = makeInfoContent(group);
+  panel.dataset.groupKey = group.key || '';
   panel.classList.remove('hidden');
+  // DOM 렌더링 후 크기를 계산해 화면 밖으로 나가지 않도록 보정
+  requestAnimationFrame(() => positionFloatingInfoPanelByGroup(group));
   return true;
 }
+
 function requestDraw(){ clearTimeout(drawTimer); drawTimer = setTimeout(drawCanvas, 40); }
 function resizeCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
@@ -465,6 +506,14 @@ function drawCanvas() {
   visibleRows = getVisibleRows();
   visibleGroups = buildVisibleGroups(visibleRows);
   const projection = map.getProjection();
+
+  // 지도 이동/확대·축소 시 열린 고객정보 창도 해당 마커 위치를 따라가도록 보정
+  if (openedGroupKey) {
+    const openedGroup = visibleGroups.find(g => g.key === openedGroupKey);
+    if (openedGroup && !$('floatingInfoPanel')?.classList.contains('hidden')) {
+      positionFloatingInfoPanelByGroup(openedGroup);
+    }
+  }
   const size = 13 * markerSizePercent / 100;
 
   // 너무 축소되어 화면 전체가 5만건이어도 Canvas는 빠르게 찍음
@@ -787,6 +836,7 @@ function showRoadviewAt(lat, lng, row=null) {
 
 function makeCustomerCardHtml(row, countText='') {
   return `<div class="customer-info-card">
+    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
     <b class="contract-no">${escapeHtml(row.contractNo || countText || '-')}</b>
     <div class="info-row"><span class="info-label">검침원</span><span class="info-value">${escapeHtml(row.reader || '-')}</span></div>
     <div class="info-row"><span class="info-label">검침일</span><span class="info-value">${escapeHtml(row.meterDate || '-')}</span></div>
@@ -810,6 +860,7 @@ function makeInfoContent(group) {
   ).join('');
   const extra = group.rows.length > 300 ? `<div class="group-row">외 ${group.rows.length - 300}건 생략</div>` : '';
   return `<div class="customer-info-card" style="max-width:430px;">
+    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
     <b class="contract-no">동일 위치 ${group.rows.length}건</b>
     <div class="address">${escapeHtml(first.address || '')}</div>
     <div class="group-list">${rowsHtml}${extra}</div>
@@ -829,8 +880,8 @@ function onMapClick(mouseEvent) {
   if (!best) return closeInfo();
   if (openedGroupKey === best.key) return closeInfo();
   closeInfo();
-  showCustomerInfoPanel(makeInfoContent(best));
   openedGroupKey = best.key;
+  showFloatingInfoPanel(best);
   showRoadviewAt(best.lat, best.lng, best.rows && best.rows[0]);
 }
 function renderList(sourceRows = null) {
@@ -840,8 +891,9 @@ function renderList(sourceRows = null) {
     const r = rows.find(x => x.id === +el.dataset.id); if (!r || !r.lat || !r.lng || !map) return;
     map.setCenter(new kakao.maps.LatLng(r.lat, r.lng));
     map.setLevel(3);
-    showCustomerInfoPanel(makeCustomerCardHtml(r));
-    openedGroupKey = makeGroupKey(r);
+    const group = { key: makeGroupKey(r), lat: r.lat, lng: r.lng, rows: [r] };
+    openedGroupKey = group.key;
+    showFloatingInfoPanel(group);
     showRoadviewAt(r.lat, r.lng, r);
     requestDraw();
   }));

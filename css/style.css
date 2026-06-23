@@ -111,86 +111,46 @@
 }
 
 
-/* 우측 고객정보 패널 */
-.customer-side-panel {
+/* 지도 위 최상단 고객정보 플로팅 패널 */
+.floating-info-panel {
   position: absolute;
-  top: 48px;
-  left: 12px;
-  right: 12px;
-  max-height: 42%;
-  overflow: auto;
-  padding: 12px 14px;
-  background: rgba(255,255,255,.98);
-  color: #111827;
-  border: 1px solid rgba(17,24,39,.16);
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.32);
-  z-index: 50;
-  font-size: 13px;
-  line-height: 1.55;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
+  left: 0;
+  top: 0;
+  z-index: 9999999;
+  pointer-events: auto;
+  transform: translate(-50%, calc(-100% - 18px));
+  max-width: min(420px, calc(100% - 24px));
 }
-.customer-side-panel.hidden {
+.floating-info-panel.hidden {
   display: none;
 }
-.customer-panel-close {
-  position: sticky;
-  float: right;
-  top: 0;
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 999px;
-  background: #f3f4f6;
-  color: #374151;
-  font-size: 17px;
-  line-height: 24px;
-  padding: 0;
-  margin: -4px -4px 4px 8px;
-  cursor: pointer;
-  z-index: 2;
+.floating-info-panel .customer-info-card {
+  min-width: 260px;
+  max-width: 400px;
+  background: #ffffff;
+  border: 1px solid rgba(17,24,39,.16);
+  box-shadow: 0 14px 34px rgba(0,0,0,.36);
 }
-.customer-panel-close:hover {
-  background: #e5e7eb;
+.floating-info-panel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 10px solid #ffffff;
+  filter: drop-shadow(0 3px 2px rgba(0,0,0,.18));
 }
-.customer-side-panel .contract-no {
-  display: block;
-  margin: 0 32px 8px 0;
-  font-size: 15px;
-  font-weight: 900;
-  color: #111827;
+
+.floating-info-panel.below-marker {
+  transform: translate(-50%, 18px);
 }
-.customer-side-panel .info-row {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px dashed #e5e7eb;
-}
-.customer-side-panel .info-row:last-child {
-  border-bottom: 0;
-}
-.customer-side-panel .info-label {
-  color: #6b7280;
-  font-weight: 800;
-}
-.customer-side-panel .info-value {
-  color: #111827;
-  font-weight: 650;
-}
-.customer-side-panel .address {
-  margin-top: 8px;
-  padding: 8px;
-  border-radius: 10px;
-  background: #f9fafb;
-  color: #374151;
-  font-size: 12px;
-  line-height: 1.45;
-}
-.customer-side-panel .group-list {
-  max-height: 220px;
-  overflow: auto;
-  margin-top: 8px;
-  border-top: 1px solid #e5e7eb;
+.floating-info-panel.below-marker::after {
+  top: -9px;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 10px solid #ffffff;
 }
