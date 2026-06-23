@@ -768,13 +768,39 @@ function showRoadviewAt(lat, lng, row=null) {
   });
 }
 
+function makeCustomerCardHtml(row, countText='') {
+  return `<div class="customer-info-card">
+    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
+    <b class="contract-no">${escapeHtml(row.contractNo || countText || '-')}</b>
+    <div class="info-row"><span class="info-label">검침원</span><span class="info-value">${escapeHtml(row.reader || '-')}</span></div>
+    <div class="info-row"><span class="info-label">검침일</span><span class="info-value">${escapeHtml(row.meterDate || '-')}</span></div>
+    <div class="info-row"><span class="info-label">분구</span><span class="info-value">${escapeHtml(row.bun || '-')}</span></div>
+    <div class="info-row"><span class="info-label">계약종별</span><span class="info-value">${escapeHtml(row.type || '-')}</span></div>
+    <div class="info-row"><span class="info-label">계약전력</span><span class="info-value">${escapeHtml(row.power || '-')}</span></div>
+    <div class="info-row"><span class="info-label">검침방법</span><span class="info-value">${escapeHtml(row.method || '-')}</span></div>
+    <div class="address">${escapeHtml(row.address || '')}</div>
+  </div>`;
+}
 function makeInfoContent(group) {
   const first = group.rows[0] || {};
-  if (group.rows.length === 1) return `<div style="padding:10px;font-size:13px;line-height:1.5;min-width:210px;max-width:330px"><b>${escapeHtml(first.contractNo||'-')}</b><br>검침원: ${escapeHtml(first.reader||'-')}<br>검침일: ${escapeHtml(first.meterDate||'-')}<br>분구: ${escapeHtml(first.bun||'-')}<br>계약종별: ${escapeHtml(first.type||'-')}<br>계약전력: ${escapeHtml(first.power||'-')}<br>계약검침방법: ${escapeHtml(first.method||'-')}<br><span style="color:#666">${escapeHtml(first.address||'')}</span></div>`;
-  const rowsHtml = group.rows.slice(0, 300).map(r => `<div class="group-row"><b>${escapeHtml(r.contractNo||'-')}</b><br>검침원: ${escapeHtml(r.reader||'-')} / 검침일: ${escapeHtml(r.meterDate||'-')} / 분구: ${escapeHtml(r.bun||'-')}<br><small>${escapeHtml(r.type||'-')} / ${escapeHtml(r.power||'-')} / ${escapeHtml(r.method||'-')}</small></div>`).join('');
+  if (group.rows.length === 1) return makeCustomerCardHtml(first);
+
+  const rowsHtml = group.rows.slice(0, 300).map(r => 
+    `<div class="group-row">
+      <b>${escapeHtml(r.contractNo || '-')}</b><br>
+      검침원: ${escapeHtml(r.reader || '-')} / 검침일: ${escapeHtml(r.meterDate || '-')} / 분구: ${escapeHtml(r.bun || '-')}<br>
+      <small>${escapeHtml(r.type || '-')} / ${escapeHtml(r.power || '-')} / ${escapeHtml(r.method || '-')}</small>
+    </div>`
+  ).join('');
   const extra = group.rows.length > 300 ? `<div class="group-row">외 ${group.rows.length - 300}건 생략</div>` : '';
-  return `<div style="padding:10px;font-size:13px;line-height:1.45;min-width:270px;max-width:380px"><b>동일 위치 ${group.rows.length}건</b><br><span style="color:#666">${escapeHtml(first.address||'')}</span><div class="group-list">${rowsHtml}${extra}</div></div>`;
+  return `<div class="customer-info-card" style="max-width:430px;">
+    <button class="close-btn" onclick="closeInfo()" title="닫기">×</button>
+    <b class="contract-no">동일 위치 ${group.rows.length}건</b>
+    <div class="address">${escapeHtml(first.address || '')}</div>
+    <div class="group-list">${rowsHtml}${extra}</div>
+  </div>`;
 }
+
 function onMapClick(mouseEvent) {
   if (!visibleGroups.length) return;
   const p = map.getProjection().containerPointFromCoords(mouseEvent.latLng);
@@ -793,7 +819,7 @@ function onMapClick(mouseEvent) {
     content: makeInfoContent(best),
     yAnchor: 1.15,
     xAnchor: 0.5,
-    zIndex: 20
+    zIndex: 999999
   });
   openedOverlay.setMap(map);
   openedGroupKey = best.key;
