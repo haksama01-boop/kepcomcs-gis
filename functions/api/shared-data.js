@@ -106,9 +106,10 @@ export async function onRequestPost(context) {
         .run();
     }
 
+    // 기존 DB와 호환되도록 upload_logs에는 기존 컬럼만 사용
     await env.GIS_DB
-      .prepare('INSERT INTO upload_logs (kind, count, chunk_count, updated_at) VALUES (?, ?, ?, ?)')
-      .bind('shared', rows.length, chunkCount, updatedAt)
+      .prepare('INSERT INTO upload_logs (kind, count, updated_at) VALUES (?, ?, ?)')
+      .bind('shared', rows.length, updatedAt)
       .run();
 
     return json({
@@ -149,7 +150,6 @@ async function ensureTable(env) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       kind TEXT,
       count INTEGER,
-      chunk_count INTEGER DEFAULT 0,
       updated_at TEXT
     )`)
     .run();

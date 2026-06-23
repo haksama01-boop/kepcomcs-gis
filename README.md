@@ -101,3 +101,10 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
 - 공용자료를 250행 단위로 나누어 저장
 - 대용량 엑셀 공용자료 저장 안정화
 - 기존 D1 설정 `GIS_DB`, `ADMIN_PASSWORD` 그대로 사용
+
+
+## v3.4 수정 사항
+
+- 기존 D1 `upload_logs` 테이블과 호환되도록 수정
+- `chunk_count` 컬럼 오류 해결
+- 공용자료 대용량 조각 저장 기능 유지
