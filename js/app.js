@@ -97,20 +97,18 @@ function initMap() {
   setMsg('지도 준비 완료. 엑셀 파일을 업로드해 주세요.');
 }
 
-$('excelFile').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  setMsg('엑셀 읽는 중...');
-  await sleep(20);
+async function parseExcelFileToRows(file) {
   const data = await file.arrayBuffer();
   const wb = XLSX.read(data, { type:'array', cellDates:true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const json = XLSX.utils.sheet_to_json(sheet, { defval:'' });
   const headers = Object.keys(json[0] || {}).map(h => h.trim());
   const missing = REQUIRED_COLUMNS.filter(c => !headers.includes(c));
-  if (missing.length) return setMsg(`필수 컬럼이 없습니다: ${missing.join(', ')}\n현재 컬럼: ${headers.join(', ')}`, true);
+  if (missing.length) {
+    throw new Error(`필수 컬럼이 없습니다: ${missing.join(', ')}\n현재 컬럼: ${headers.join(', ')}`);
+  }
 
-  rows = json.map((r, idx) => {
+  return json.map((r, idx) => {
     const coords = detectCoords(r);
     return {
       id: idx + 1,
@@ -127,22 +125,92 @@ $('excelFile').addEventListener('change', async e => {
       status: coords.lat && coords.lng ? '좌표있음' : '대기'
     };
   }).filter(r => r.address);
+}
 
+async function loadRowsIntoMap(newRows, sourceLabel='자료') {
+  rows = newRows || [];
   const coordCount = rows.filter(r => r.lat && r.lng).length;
 
-  // 체감 속도 개선: 엑셀 파싱이 끝나면 버튼을 먼저 활성화합니다.
   $('geocodeBtn').disabled = false;
   $('fitBtn').disabled = coordCount === 0;
-  setMsg(`${rows.length.toLocaleString()}건 읽음. 좌표 인식 ${coordCount.toLocaleString()}건. 필터와 마커 기준을 준비하는 중입니다...`);
+  setMsg(`${sourceLabel} ${rows.length.toLocaleString()}건 읽음. 좌표 인식 ${coordCount.toLocaleString()}건. 필터와 마커 기준을 준비하는 중입니다...`);
 
-  // 무거운 초기 계산은 버튼 활성화 이후 처리합니다.
   await sleep(10);
   buildFilters();
   rebuildColorMap();
   applyFilters();
 
-  setMsg(`${rows.length.toLocaleString()}건 읽음. 좌표 인식 ${coordCount.toLocaleString()}건. 좌표가 있으면 바로 표시됩니다.`);
+  setMsg(`${sourceLabel} ${rows.length.toLocaleString()}건 읽음. 좌표 인식 ${coordCount.toLocaleString()}건. 좌표가 있으면 바로 표시됩니다.`);
+}
+
+// 2번 개인자료 업로드: 업로드한 사람의 브라우저에서만 적용
+$('excelFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    setMsg('개인자료 엑셀 읽는 중...');
+    await sleep(20);
+    const parsedRows = await parseExcelFileToRows(file);
+    await loadRowsIntoMap(parsedRows, '개인자료');
+  } catch (err) {
+    setMsg(err.message || String(err), true);
+  }
 });
+
+// 1번 공용자료 업로드: Cloudflare KV 저장소에 저장되어 모든 접속자가 볼 수 있음
+$('sharedUploadBtn').addEventListener('click', async () => {
+  const file = $('sharedExcelFile').files[0];
+  const password = normalize($('adminPassword').value);
+  if (!file) return setMsg('공용자료로 올릴 엑셀 파일을 선택해 주세요.', true);
+  if (!password) return setMsg('관리자 비밀번호를 입력해 주세요.', true);
+
+  try {
+    setMsg('공용자료 엑셀 읽는 중...');
+    const parsedRows = await parseExcelFileToRows(file);
+
+    setMsg(`공용자료 서버 저장 중... ${parsedRows.length.toLocaleString()}건`);
+    const res = await fetch('/api/shared-data', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-admin-password': password
+      },
+      body: JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        rows: parsedRows
+      })
+    });
+
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result.error || '공용자료 저장에 실패했습니다.');
+
+    await loadRowsIntoMap(parsedRows, '공용자료');
+    setMsg(`공용자료 업로드 완료. 모든 접속자가 공용자료를 불러올 수 있습니다. ${parsedRows.length.toLocaleString()}건`);
+  } catch (err) {
+    setMsg((err && err.message) ? err.message : String(err), true);
+  }
+});
+
+// 공용자료 불러오기
+$('loadSharedDataBtn').addEventListener('click', loadSharedData);
+
+async function loadSharedData() {
+  try {
+    setMsg('공용자료 불러오는 중...');
+    const res = await fetch('/api/shared-data', { method: 'GET' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || '공용자료를 불러오지 못했습니다.');
+    if (!data.rows || !Array.isArray(data.rows) || !data.rows.length) {
+      return setMsg('저장된 공용자료가 없습니다. 먼저 1번 공용자료를 업로드해 주세요.', true);
+    }
+    await loadRowsIntoMap(data.rows, '공용자료');
+    const when = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '-';
+    setMsg(`공용자료 불러오기 완료. ${data.rows.length.toLocaleString()}건 · 등록일시 ${when}`);
+  } catch (err) {
+    setMsg((err && err.message) ? err.message : String(err), true);
+  }
+}
+
 
 function geocode(address) {
   return new Promise(resolve => {

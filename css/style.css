@@ -154,3 +154,22 @@
   border-top: 0;
   border-bottom: 10px solid #ffffff;
 }
+
+
+.upload-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 10px;
+  background: #f9fafb;
+  margin-top: 6px;
+}
+.upload-box input {
+  margin-top: 8px;
+}
+.admin-upload {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.personal-upload {
+  background: #f9fafb;
+}

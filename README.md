@@ -35,3 +35,25 @@ Cloudflare Pages 또는 GitHub Pages에 정적 사이트로 배포할 수 있습
 ## 만든이
 
 조학래
+
+
+## 1번 공용자료 업로드 설정
+
+1번 공용자료 업로드는 Cloudflare Pages Functions + KV 저장소를 사용합니다.
+
+### Cloudflare 설정
+
+1. Cloudflare 대시보드 → Workers & Pages → KV 생성
+2. KV 이름 예시: `KEPCOMCS_GIS_KV`
+3. Pages 프로젝트 → Settings → Functions → KV namespace bindings
+4. Binding name: `GIS_KV`
+5. 생성한 KV namespace 선택
+6. Pages 프로젝트 → Settings → Environment variables
+7. Variable name: `ADMIN_PASSWORD`
+8. 원하는 관리자 비밀번호 입력
+9. 다시 배포
+
+### 사용 방식
+
+- 1번 공용자료 업로드: 관리자 비밀번호 필요, 모든 접속자가 공유
+- 2번 개인자료 업로드: 각자 브라우저에서만 표시, 서로 영향 없음
