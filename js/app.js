@@ -689,7 +689,7 @@ function drawCanvas() {
 
   if (showSummaryLabels) drawSummaryLabels(ctx, visibleRows, projection, filteredRows.filter(r=>r.lat&&r.lng));
   drawMemoLayer();
-  setMsg(`필터 결과 계약번호 ${countContracts(filteredRows.filter(r=>r.lat&&r.lng)).toLocaleString()}건 · 현재 화면 ${visibleRows.length.toLocaleString()}건 표시 중입니다. Canvas 방식이라 필터/이동이 더 빠릅니다.`);
+  setMsg(`필터 결과 계약번호 ${countContracts(filteredRows.filter(r=>r.lat&&r.lng)).toLocaleString()}건 · 현재 화면 ${visibleRows.length.toLocaleString()}건 표시 중입니다.`);
 }
 function drawShapePath(ctx, x, y, size, shape) {
   ctx.beginPath();

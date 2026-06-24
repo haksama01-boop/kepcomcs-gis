@@ -208,3 +208,9 @@
 .admin-upload {
   transition: all .2s ease;
 }
+
+
+/* v3.5 UI 정리 */
+aside h1 + div {
+  margin-top: 4px;
+}
